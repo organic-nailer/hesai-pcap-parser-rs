@@ -6,6 +6,7 @@ use std::f32::consts::PI;
 use std::path::Path;
 use std::process::exit;
 use std::env;
+use std::time::Instant;
 
 use crate::csvwriter::CsvWriter;
 
@@ -29,6 +30,7 @@ fn main() {
     let dir = format!("{}/", stem.to_str().unwrap());
     let mut csv_writer = CsvWriter::create(&dir, stem.to_str().unwrap());
 
+    let time_start = Instant::now();
     loop {
         match reader.next() {
             Ok((offset, block)) => {
@@ -57,8 +59,9 @@ fn main() {
             Err(e) => panic!("error while reading: {:?}", e),
         }
     }
+    let duration = time_start.elapsed();
 
-    println!("num_packets: {}", num_packets);
+    println!("{} packets have been processed in {:?}", num_packets, duration);
     //let end = start.elapsed();
     //println!("{}.{:03}sec", end.as_secs(), end.subsec_millis() / 1000)
 }
@@ -120,13 +123,13 @@ fn parse_block(packet_block: &[u8], block_timestamp: u32, writer: &mut CsvWriter
         let (x,y,z) = calc_polar_coordinate(
             azimuth as f32 / 100.0, 
             v_angle as f32, 
-            distance as f32 * 4.0 / 100.0);
+            distance as f32 * 4.0 / 1000.0);
 
         writer.write_row(VeloPoint { 
             reflectivity, 
             channel, 
             azimuth, 
-            distance_m: distance as f32 * 4.0 / 100.0, 
+            distance_m: distance as f32 * 4.0 / 1000.0, 
             adjusted_time: channel_timestamp, 
             timestamp: channel_timestamp, 
             vertical_angle: v_angle as f32, 
