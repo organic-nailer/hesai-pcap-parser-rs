@@ -61,4 +61,6 @@ impl<'v> FrameWriter for CsvWriter<'v> {
             None => ()
         }
     }
+
+    fn finalize(&mut self) { }
 }
