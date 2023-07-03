@@ -1,6 +1,6 @@
-use csvwriter::VeloPoint;
 use pcap_parser::*;
 use pcap_parser::traits::PcapReaderIterator;
+use velopoint::VeloPoint;
 use std::fs::File;
 use std::f32::consts::PI;
 use std::path::Path;
@@ -9,17 +9,23 @@ use std::env;
 use std::time::Instant;
 
 use crate::csvwriter::CsvWriter;
+use crate::framewriter::FrameWriter;
+use crate::hdfwriter::HdfWriter;
 
 mod csvwriter;
+mod hdfwriter;
+mod velopoint;
+mod framewriter;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    // let args: Vec<String> = env::args().collect();
 
-    if args.len() < 2 {
-        println!("please specify the target pcap");
-        exit(-1);
-    }
-    let input = &args[1];
+    // if args.len() < 2 {
+    //     println!("please specify the target pcap");
+    //     exit(-1);
+    // }
+    // let input = &args[1];
+    let input = "25M.pcap";
     let stem = Path::new(input).file_stem().unwrap();
 
     //let start = Instant::now();
@@ -28,7 +34,8 @@ fn main() {
     let mut reader = LegacyPcapReader::new(65536, file).expect("LegacyPcapReader");
 
     let dir = format!("{}/", stem.to_str().unwrap());
-    let mut csv_writer = CsvWriter::create(&dir, stem.to_str().unwrap());
+    // let mut writer = CsvWriter::create(&dir, stem.to_str().unwrap());
+    let mut writer = HdfWriter::create(&dir, stem.to_str().unwrap());
 
     let time_start = Instant::now();
     loop {
@@ -46,7 +53,7 @@ fn main() {
                         let ip_data = &ether_data[ip_header_size..packet_size];
                         // udpのヘッダ長は8byte
                         let udp_data = &ip_data[8..ip_data.len()];
-                        parse_packet_body(udp_data, &mut csv_writer);
+                        parse_packet_body(udp_data, &mut writer);
                     },
                     _ => ()
                 }
@@ -66,7 +73,7 @@ fn main() {
     //println!("{}.{:03}sec", end.as_secs(), end.subsec_millis() / 1000)
 }
 
-fn parse_packet_body(packet_body: &[u8], writer: &mut CsvWriter) {
+fn parse_packet_body(packet_body: &[u8], writer: &mut dyn FrameWriter) {
     // let pre_header = &packet_body[0..6];
     let header = &packet_body[6..12];
     let block_num = header[1] as u32;
@@ -111,7 +118,7 @@ fn calc_polar_coordinate(azimuth_deg: f32, v_angle_deg: f32, distance_m: f32) ->
     (x,y,z)
 }
 
-fn parse_block(packet_block: &[u8], block_timestamp: u32, writer: &mut CsvWriter) {
+fn parse_block(packet_block: &[u8], block_timestamp: u32, writer: &mut dyn FrameWriter) {
     let azimuth = ((packet_block[1] as u32) << 8) + (packet_block[0] as u32);
     for channel in 0..32 as u8 {
         let channel_timestamp = (block_timestamp as f32 + 1.512 * channel as f32 + 0.28) as u32;
