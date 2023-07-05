@@ -31,7 +31,7 @@ fn main() {
 
     let mut writer: Box<dyn FrameWriter> = match args.out_type {
         OutType::Csv => Box::new(CsvWriter::create(dir, stem.to_str().unwrap().to_string())),
-        OutType::Hdf => Box::new(HdfWriter::create(dir, stem.to_str().unwrap().to_string())),
+        OutType::Hdf => Box::new(HdfWriter::create(stem.to_str().unwrap().to_string())),
     };
 
     let time_start = Instant::now();

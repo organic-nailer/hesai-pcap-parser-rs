@@ -1,4 +1,4 @@
-use std::{fs::{File, OpenOptions, self}, path::Path};
+use std::{fs::{OpenOptions, self}, path::Path};
 use std::io::{BufWriter, Write};
 
 use crate::{velopoint::VeloPoint, framewriter::FrameWriter};
@@ -46,7 +46,6 @@ impl FrameWriter for CsvWriter {
             if self.buffer.len() > 0 {
                 self.write_to_file();
                 self.buffer.clear();
-                return;
             }
         }
         self.previous_azimuth = row.azimuth;
