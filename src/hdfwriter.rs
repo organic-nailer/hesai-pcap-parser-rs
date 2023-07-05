@@ -6,17 +6,17 @@ use ndarray::s;
 use crate::framewriter::FrameWriter;
 use crate::velopoint::VeloPoint;
 
-pub struct HdfWriter<'v> {
-    dir: &'v str,
-    file_prefix: &'v str,
+pub struct HdfWriter {
+    dir: String,
+    file_prefix: String,
     previous_azimuth: u32,
     file_index: u32,
     buffer: Vec<VeloPoint>,
 }
 
-impl<'v> HdfWriter<'v> {
-    pub fn create(dir: &'v str, file_prefix: &'v str) -> HdfWriter<'v> {
-        fs::create_dir(dir).unwrap();
+impl HdfWriter {
+    pub fn create(dir: String, file_prefix: String) -> HdfWriter {
+        fs::create_dir(dir.to_string()).unwrap();
         HdfWriter { 
             dir, 
             file_prefix,
@@ -44,7 +44,7 @@ impl<'v> HdfWriter<'v> {
     }
 }
 
-impl<'v> FrameWriter for HdfWriter<'v> {
+impl FrameWriter for HdfWriter {
     fn write_row(&mut self, row: VeloPoint) {
         if row.azimuth < self.previous_azimuth {
             if self.buffer.len() > 0 {
