@@ -1,34 +1,38 @@
-use csvwriter::VeloPoint;
 use pcap_parser::*;
 use pcap_parser::traits::PcapReaderIterator;
+use velopoint::VeloPoint;
 use std::fs::File;
 use std::f32::consts::PI;
 use std::path::Path;
 use std::process::exit;
 use std::env;
 use std::time::Instant;
+use getopts::Options;
 
 use crate::csvwriter::CsvWriter;
+use crate::framewriter::FrameWriter;
+use crate::hdfwriter::HdfWriter;
 
 mod csvwriter;
+mod hdfwriter;
+mod velopoint;
+mod framewriter;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        println!("please specify the target pcap");
-        exit(-1);
-    }
-    let input = &args[1];
-    let stem = Path::new(input).file_stem().unwrap();
+    let args = parse_args();
+    let stem = Path::new(&args.input).file_stem().unwrap();
 
     //let start = Instant::now();
-    let file = File::open(input).unwrap();
+    let file = File::open(&args.input).unwrap();
     let mut num_packets = 0;
     let mut reader = LegacyPcapReader::new(65536, file).expect("LegacyPcapReader");
 
     let dir = format!("{}/", stem.to_str().unwrap());
-    let mut csv_writer = CsvWriter::create(&dir, stem.to_str().unwrap());
+
+    let mut writer: Box<dyn FrameWriter> = match args.out_type {
+        OutType::Csv => Box::new(CsvWriter::create(dir, stem.to_str().unwrap().to_string())),
+        OutType::Hdf => Box::new(HdfWriter::create(stem.to_str().unwrap().to_string(), args.compression)),
+    };
 
     let time_start = Instant::now();
     loop {
@@ -46,7 +50,7 @@ fn main() {
                         let ip_data = &ether_data[ip_header_size..packet_size];
                         // udpのヘッダ長は8byte
                         let udp_data = &ip_data[8..ip_data.len()];
-                        parse_packet_body(udp_data, &mut csv_writer);
+                        parse_packet_body(udp_data, &mut writer);
                     },
                     _ => ()
                 }
@@ -66,7 +70,51 @@ fn main() {
     //println!("{}.{:03}sec", end.as_secs(), end.subsec_millis() / 1000)
 }
 
-fn parse_packet_body(packet_body: &[u8], writer: &mut CsvWriter) {
+enum OutType {
+    Csv,
+    Hdf
+}
+
+struct Args {
+    input: String,
+    out_type: OutType,
+    compression: bool,
+}
+
+fn parse_args() -> Args {
+    let args: Vec<String> = env::args().collect();
+    let mut opts = Options::new();
+    opts.optopt("o", "output", "output type", "csv|hdf");
+    opts.optflag("h", "help", "print this help menu");
+    opts.optflag("c", "compression", "enable compression");
+    let matches = opts.parse(&args[1..]).unwrap();
+    if matches.opt_present("h") {
+        print!("{}", opts.usage("Usage: veloconv [options] <input>"));
+        exit(0);
+    }
+    let input = if !matches.free.is_empty() {
+        matches.free[0].clone()
+    } else {
+        print!("{}", opts.usage("Usage: veloconv [options] <input>"));
+        exit(0);
+    };
+    let out_type = if matches.opt_present("o") {
+        match matches.opt_str("o").unwrap().as_str() {
+            "csv" => OutType::Csv,
+            "hdf" => OutType::Hdf,
+            _ => {
+                print!("{}", opts.usage("Usage: veloconv [options] <input>"));
+                exit(0);
+            }
+        }
+    } else {
+        OutType::Csv
+    };
+    let compression = matches.opt_present("c");
+    Args { input, out_type, compression }
+}
+
+fn parse_packet_body(packet_body: &[u8], writer: &mut Box<dyn FrameWriter>) {
     // let pre_header = &packet_body[0..6];
     let header = &packet_body[6..12];
     let block_num = header[1] as u32;
@@ -111,7 +159,7 @@ fn calc_polar_coordinate(azimuth_deg: f32, v_angle_deg: f32, distance_m: f32) ->
     (x,y,z)
 }
 
-fn parse_block(packet_block: &[u8], block_timestamp: u32, writer: &mut CsvWriter) {
+fn parse_block(packet_block: &[u8], block_timestamp: u32, writer: &mut Box<dyn FrameWriter>) {
     let azimuth = ((packet_block[1] as u32) << 8) + (packet_block[0] as u32);
     for channel in 0..32 as u8 {
         let channel_timestamp = (block_timestamp as f32 + 1.512 * channel as f32 + 0.28) as u32;
