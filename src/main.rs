@@ -31,7 +31,7 @@ fn main() {
 
     let mut writer: Box<dyn FrameWriter> = match args.out_type {
         OutType::Csv => Box::new(CsvWriter::create(dir, stem.to_str().unwrap().to_string())),
-        OutType::Hdf => Box::new(HdfWriter::create(stem.to_str().unwrap().to_string())),
+        OutType::Hdf => Box::new(HdfWriter::create(stem.to_str().unwrap().to_string(), args.compression)),
     };
 
     let time_start = Instant::now();
@@ -77,7 +77,8 @@ enum OutType {
 
 struct Args {
     input: String,
-    out_type: OutType
+    out_type: OutType,
+    compression: bool,
 }
 
 fn parse_args() -> Args {
@@ -85,6 +86,7 @@ fn parse_args() -> Args {
     let mut opts = Options::new();
     opts.optopt("o", "output", "output type", "csv|hdf");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("c", "compression", "enable compression");
     let matches = opts.parse(&args[1..]).unwrap();
     if matches.opt_present("h") {
         print!("{}", opts.usage("Usage: veloconv [options] <input>"));
@@ -108,7 +110,8 @@ fn parse_args() -> Args {
     } else {
         OutType::Csv
     };
-    Args { input, out_type }
+    let compression = matches.opt_present("c");
+    Args { input, out_type, compression }
 }
 
 fn parse_packet_body(packet_body: &[u8], writer: &mut Box<dyn FrameWriter>) {
