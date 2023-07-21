@@ -6,7 +6,7 @@ use crate::{velopoint::VeloPoint, framewriter::FrameWriter};
 pub struct CsvWriter {
     dir: String,
     file_prefix: String,
-    previous_azimuth: u32,
+    previous_azimuth: u16,
     file_index: u32,
     buffer: Vec<VeloPoint>,
 }

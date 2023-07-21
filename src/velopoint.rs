@@ -5,9 +5,8 @@ use hdf5::H5Type;
 pub struct VeloPoint {
     pub reflectivity: u8,
     pub channel: u8,
-    pub azimuth: u32,
+    pub azimuth: u16,
     pub distance_m: f32,
-    pub adjusted_time: u32,
     pub timestamp: u32,
     pub vertical_angle: f32,
     pub x: f32,
@@ -18,12 +17,11 @@ pub struct VeloPoint {
 impl VeloPoint {
     pub fn to_string(&self) -> String {
         format!(
-            "{},{},{},{},{},{},{},{},{},{}\n",
+            "{},{},{},{},{},{},{},{},{}\n",
             self.reflectivity,
             self.channel,
             self.azimuth,
             self.distance_m,
-            self.adjusted_time,
             self.timestamp,
             self.vertical_angle,
             self.x,

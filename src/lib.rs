@@ -173,9 +173,8 @@ fn parse_block(packet_block: &[u8], block_timestamp: u32, writer: &mut Box<dyn F
         writer.write_row(VeloPoint { 
             reflectivity, 
             channel, 
-            azimuth, 
-            distance_m: distance as f32 * 4.0 / 1000.0, 
-            adjusted_time: channel_timestamp, 
+            azimuth: azimuth as u16, 
+            distance_m: distance as f32 * 4.0 / 1000.0,
             timestamp: channel_timestamp, 
             vertical_angle: v_angle as f32, 
             x, y, z })

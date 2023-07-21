@@ -1,11 +1,11 @@
-use std::{path::Path};
+use std::path::Path;
 use hdf5::File;
 
 use crate::framewriter::FrameWriter;
 use crate::velopoint::VeloPoint;
 
 pub struct HdfWriter {
-    previous_azimuth: u32,
+    previous_azimuth: u16,
     dataset_index: u32,
     file: File,
     buffer: Vec<VeloPoint>,
@@ -31,7 +31,7 @@ impl HdfWriter {
 
         let compression_level = if self.enable_compression { 1 } else { 0 };
         
-        let dataset_name = format!("frame{}", self.dataset_index);
+        let dataset_name = format!("frame{:0>5}", self.dataset_index);
         let dataset = self.file.new_dataset::<VeloPoint>()
             .shape([points_num])
             .deflate(compression_level)
