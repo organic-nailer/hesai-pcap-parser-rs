@@ -32,6 +32,8 @@ pub fn run(args: Args) {
         OutType::Hdf => Box::new(HdfWriter::create(stem.to_str().unwrap().to_string(), args.compression)),
     };
 
+    let mut header_written = false;
+
     let time_start = Instant::now();
     loop {
         match reader.next() {
@@ -49,6 +51,10 @@ pub fn run(args: Args) {
                         // udpのヘッダ長は8byte
                         let udp_data = &ip_data[8..ip_data.len()];
                         parse_packet_body(udp_data, &mut writer);
+                        if !header_written {
+                            header_written = true;
+                            write_header(udp_data, &mut writer);
+                        }
                     },
                     _ => ()
                 }
@@ -109,6 +115,20 @@ pub fn parse_args(args: &Vec<String>) -> Args {
     };
     let compression = matches.opt_present("c");
     Args { input, out_type, compression }
+}
+
+fn write_header(packet_body: &[u8], writer: &mut Box<dyn FrameWriter>) {
+    let header = &packet_body[6..12];
+    let laser_num = header[0] as u32;
+    let tail = &packet_body[1052..1076];
+    let return_mode = match tail[10] {
+        0x37 => 0, // Strongest
+        0x38 => 1, // Last
+        0x39 => 2, // Dual
+        _ => 0,
+    };
+    let motor_speed = ((tail[12] as u32) << 8) + (tail[11] as u32);
+    writer.write_attribute(laser_num, motor_speed, return_mode, "Hesai", "XT32");
 }
 
 fn parse_packet_body(packet_body: &[u8], writer: &mut Box<dyn FrameWriter>) {
